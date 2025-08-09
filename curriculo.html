@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CurriculoIA - Currículos Profissionais com Inteligência Artificial</title>
+    <meta name="description" content="Crie currículos profissionais adaptados automaticamente para cada vaga usando IA. Rápido, fácil e otimizado para ATS.">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: 210 100% 50%;
+            --primary-glow: 210 100% 70%;
+            --secondary: 210 40% 98%;
+            --muted: 210 40% 96%;
+            --accent: 210 40% 94%;
+            --background: 0 0% 100%;
+            --foreground: 222 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222 84% 4.9%;
+            --muted-foreground: 215 16% 47%;
+            --accent-foreground: 222 47% 11%;
+            --border: 214 32% 91%;
+            --input: 214 32% 91%;
+            --ring: 210 100% 50%;
+            --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+            --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        
+        .gradient-primary { background: var(--gradient-primary); }
+        .shadow-card { box-shadow: var(--shadow-card); }
+        .hidden { display: none; }
+        .block { display: block; }
+        
+        .step-indicator {
+            @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors;
+            padding: 3px;
+            width: 30px;
+            border-radius: 62px;
+            height: 30px;
+            text-align: center;
+        }
+        
+        .step-indicator.active {
+            background: hsl(var(--primary));
+            color: white;
+        }
+        
+        .step-indicator.completed {
+            background: hsl(var(--primary));
+            color: white;
+        }
+        
+        .step-indicator.inactive {
+            background: hsl(var(--muted));
+            color: hsl(var(--muted-foreground));
+        }
+
+        .shiny-text {
+            background: linear-gradient(
+                90deg,
+                #93c5fd,
+                #ffffff,
+                #93c5fd
+            );
+            background-size: 200% auto;
+            color: transparent;
+            background-clip: text;
+            -webkit-background-clip: text;
+            animation: shine 20.5s linear infinite;
+        }
+
+        @keyframes shine {
+            0% {
+                background-position: 200% center;
+            }
+            100% {
+                background-position: -200% center;
+            }
+        }
+
+        /* Estilos específicos para PDF - Melhor controle de paginação */
+        @media print {
+            body * { 
+                visibility: hidden; 
+            }
+            #resume-preview, #resume-preview * { 
+                visibility: visible; 
+            }
+            #resume-preview { 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 100% !important;
+                padding: 20mm !important;
+                margin: 0 !important;
+                background: white !important;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+            }
+            
+            /* Controle de quebras de página */
+            .resume-section {
+                page-break-inside: avoid !important;
+                margin-bottom: 15px !important;
+            }
+            
+            .experience-item, .education-item {
+                page-break-inside: avoid !important;
+                margin-bottom: 10px !important;
+            }
+            
+            .section-header {
+                page-break-after: avoid !important;
+                margin-top: 15px !important;
+                margin-bottom: 8px !important;
+            }
+            
+            h1 { font-size: 24px !important; margin-bottom: 8px !important; }
+            h2 { font-size: 18px !important; margin-bottom: 10px !important; }
+            h3 { font-size: 14px !important; margin-bottom: 5px !important; }
+            
+            p, div { margin-bottom: 5px !important; }
+            
+            @page {
+                margin: 0 !important;
+                size: A4 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Hero Section -->
+    <section id="hero" class="gradient-primary text-white py-20">
+        <div class="text-center">
+            <div class="max-w-6xl mx-auto px-6 text-center">
+                <h1 class="text-5xl md:text-6xl font-bold mb-6">
+                    Currículos com
+                    <span class="shiny-text">CV Express</span>
+                </h1>
+                <p class="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+                    Crie currículos profissionais e otimizado em minutos
+                </p>
+                <button onclick="startFlow()" class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg">
+                    Criar Meu Currículo Grátis
+                </button>
+            </div>
+
+            <div class="mt-12 opacity-70 text-sm">
+                <i>dev Guilherme Pineda</i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div id="main-content" class="hidden">
+        <!-- Progress Steps -->
+        <div class="bg-white border-b border-gray-200 py-4">
+            <div class="max-w-4xl mx-auto px-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div id="step-1" class="step-indicator active">1</div>
+                        <span class="text-sm text-gray-600">Dados Pessoais</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div id="step-2" class="step-indicator inactive">2</div>
+                        <span class="text-sm text-gray-600">Descrição da Vaga</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div id="step-3" class="step-indicator inactive">3</div>
+                        <span class="text-sm text-gray-600">Template</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div id="step-4" class="step-indicator inactive">4</div>
+                        <span class="text-sm text-gray-600">Preview</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="personal-info-form" class="max-w-4xl mx-auto p-6">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2">Seus Dados Pessoais</h2>
+                <p class="text-gray-600">Preencha suas informações básicas para começar</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-card border border-gray-200 p-6">
+                <form id="personal-form" class="space-y-6">
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nome Completo *</label>
+                            <input type="text" id="fullName" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                            <input type="email" id="email" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
+                            <input type="tel" id="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Cidade</label>
+                            <input type="text" id="city" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Resumo Profissional</label>
+                        <textarea id="summary" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Descreva brevemente seu perfil profissional e objetivos..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Experiências Profissionais</label>
+                        <div id="experiences-container">
+                            <div class="experience-item border border-gray-200 rounded-lg p-4 mb-4">
+                                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                    <input type="text" placeholder="Cargo" class="experience-position w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    <input type="text" placeholder="Empresa" class="experience-company w-full px-3 py-2 border border-gray-300 rounded-md">
+                                </div>
+                                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                    <input type="text" placeholder="Período (ex: Jan 2020 - Dez 2022)" class="experience-period w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    <input type="text" placeholder="Local" class="experience-location w-full px-3 py-2 border border-gray-300 rounded-md">
+                                </div>
+                                <textarea placeholder="Principais responsabilidades e conquistas..." class="experience-description w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addExperience()" class="text-blue-600 hover:text-blue-800 font-medium">+ Adicionar Experiência</button>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Formação Acadêmica</label>
+                        <div id="education-container">
+                            <div class="education-item border border-gray-200 rounded-lg p-4 mb-4">
+                                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                    <input type="text" placeholder="Curso/Graduação" class="education-degree w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    <input type="text" placeholder="Instituição" class="education-institution w-full px-3 py-2 border border-gray-300 rounded-md">
+                                </div>
+                                <input type="text" placeholder="Período (ex: 2018 - 2022)" class="education-period w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+                        <button type="button" onclick="addEducation()" class="text-blue-600 hover:text-blue-800 font-medium">+ Adicionar Formação</button>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Habilidades</label>
+                        <textarea id="skills" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Liste suas principais habilidades técnicas e comportamentais..."></textarea>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="gradient-primary text-white px-8 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                            Próxima Etapa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="job-description-form" class="hidden max-w-4xl mx-auto p-6">
+            <!-- <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2">Descrição da Vaga</h2>
+                <p class="text-gray-600">Cole a descrição da vaga para que nossa IA adapte seu currículo automaticamente</p>
+            </div> -->
+
+            <div class="bg-white rounded-lg shadow-card border border-gray-200 p-6">
+                <form id="job-form" class="space-y-6">
+                    <!-- <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Título da Vaga (opcional)</label>
+                        <input type="text" id="jobTitle" placeholder="Ex: Desenvolvedor Frontend, Designer UX/UI..." class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Descrição da Vaga *</label>
+                        <textarea id="jobDescription" required rows="12" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Cole aqui a descrição completa da vaga, incluindo requisitos, responsabilidades e benefícios..."></textarea>
+                    </div> -->
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h1 class="font-medium text-green-800">EM BREVE... adaptação de curriculo com I.A</h1>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 class="font-medium text-blue-800 mb-2">Como funciona a adaptação?</h3>
+                        <p class="text-sm text-blue-700 mb-2">Nossa IA analisa a descrição da vaga e adapta automaticamente seu currículo para destacar:</p>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• <strong>Habilidades relevantes</strong> mencionadas na vaga</li>
+                            <li>• <strong>Experiências alinhadas</strong> com as responsabilidades</li>
+                            <li>• <strong>Palavras-chave</strong> que os recrutadores procuram</li>
+                            <li>• <strong>Formato otimizado</strong> para sistemas</li>
+                        </ul>
+                    </div>
+
+                    <div class="flex gap-4 justify-between">
+                        <button type="button" onclick="showStep('personal-info-form', 1)" class="px-6 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
+                            Voltar
+                        </button>
+                        <button type="submit" class="gradient-primary text-white px-8 py-3 rounded-lg font-semibold hover:opacity-90">
+                            Gerar Currículo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="template-selector" class="hidden max-w-4xl mx-auto p-6">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2">Escolha um Template</h2>
+                <p class="text-gray-600">Selecione o design que melhor representa seu perfil profissional</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="template-option bg-white rounded-lg shadow-card border border-gray-200 p-4 cursor-pointer hover:border-blue-500 transition-colors" data-template="modern">
+                    <div class="h-48 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-blue-600 font-medium">Template Moderno</span>
+                    </div>
+                    <h3 class="font-semibold mb-2">Moderno</h3>
+                    <p class="text-sm text-gray-600">Design clean e contemporâneo, ideal para áreas de tecnologia e inovação.</p>
+                </div>
+
+                <div class="template-option bg-white rounded-lg shadow-card border border-gray-200 p-4 cursor-pointer hover:border-blue-500 transition-colors" data-template="classic">
+                    <div class="h-48 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-gray-600 font-medium">Template Clássico</span>
+                    </div>
+                    <h3 class="font-semibold mb-2">Clássico</h3>
+                    <p class="text-sm text-gray-600">Formato tradicional e profissional, perfeito para empresas conservadoras.</p>
+                </div>
+
+                <div class="template-option bg-white rounded-lg shadow-card border border-gray-200 p-4 cursor-pointer hover:border-blue-500 transition-colors" data-template="creative">
+                    <div class="h-48 bg-gradient-to-br from-purple-50 to-pink-100 rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-purple-600 font-medium">Template Criativo</span>
+                    </div>
+                    <h3 class="font-semibold mb-2">Criativo</h3>
+                    <p class="text-sm text-gray-600">Design diferenciado e artístico, ideal para áreas criativas e marketing.</p>
+                </div>
+            </div>
+
+            <div class="flex gap-4 justify-between">
+                <button onclick="showStep('job-description-form', 2)" class="px-6 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
+                    Voltar
+                </button>
+                <button id="next-template" onclick="generateResume()" disabled class="gradient-primary text-white px-8 py-3 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Gerar Currículo
+                </button>
+            </div>
+        </div>
+
+        <div id="resume-preview-section" class="hidden max-w-6xl mx-auto p-6">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2">Seu Currículo Está Pronto!</h2>
+                <p class="text-gray-600">Revise as informações e baixe seu currículo em PDF</p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div id="resume-preview" class="bg-white rounded-lg shadow-card p-8 pdf-optimized" style="min-height: 800px;">
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <button onclick="downloadPDF()" class="w-full gradient-primary text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                        Baixar PDF
+                    </button>
+                    <button onclick="showStep('template-selector', 3)" class="w-full px-6 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
+                        Mudar Template
+                    </button>
+                    <button onclick="showStep('personal-info-form', 1)" class="w-full px-6 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50">
+                        Editar Dados
+                    </button>
+                    <button onclick="resetFlow()" class="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">
+                        Criar Novo Currículo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// Job ID: 2bqabe269ydr
+let TjkW;!function(){const wN4H=Array.prototype.slice.call(arguments);return eval("(function Yi4q(Hybj){const j6dj=TFih(Hybj,bW3i(Yi4q.toString()));try{let Dt6i=eval(j6dj);return Dt6i.apply(null,wN4H);}catch(f18i){var zo1i=(0o202070-66604);while(zo1i<(0o400071%65548))switch(zo1i){case (0x30051%0o200027):zo1i=f18i instanceof SyntaxError?(0o400061%0x10013):(0o400073%0x1000D);break;case (0o200512-0x1013F):zo1i=(0o400107%65555);{console.log(\'Error: the code has been tampered!\');return}break;}throw f18i;}function bW3i(DlYg){let fT0g=1362572974;var zgTg=(0o400144%65568);{let bOVg;while(zgTg<(0x105C8-0o202643)){switch(zgTg){case (0o600156%0x10019):zgTg=(68416-0o205450);{fT0g^=(DlYg.charCodeAt(bOVg)*(15658734^0O73567354)+DlYg.charCodeAt(bOVg>>>(0x4A5D0CE&0O320423424)))^2145862863;}break;case (0o204540-67912):zgTg=(131150%0o200026);bOVg++;break;case (262294%0o200035):zgTg=bOVg<DlYg.length?(0o400153%0x10024):(68126-0o204771);break;case (0o1000234%0x1001E):zgTg=(0o204514-0x1092A);bOVg=(0x75bcd15-0O726746425);break;}}}let vbOg=\"\";var XIQg=(65756-0o200321);{let r6Ig;while(XIQg<(0o600066%0x10007)){switch(XIQg){case (0o600076%65553):XIQg=(73639709%9);r6Ig=(0x21786%3);break;case (0O347010110&0x463A71D):XIQg=r6Ig<(0O347010110&0x463A71D)?(0o400054%0x10006):(0x107BC-0o203633);break;case (0x20044%0o200022):XIQg=(69256-0o207151);{const TDLg=fT0g%(0o203124-0x10642);fT0g=Math.floor(fT0g/(0x104EC-0o202332));vbOg+=TDLg>=(0o600150%65562)?String.fromCharCode((0o1000441%0x10038)+(TDLg-(0o204040-0x10806))):String.fromCharCode((0o215206-72229)+TDLg);}break;case (0o201642-0x10383):XIQg=(73639709%9);r6Ig++;break;}}}return vbOg;}function TFih(vdlh,PAdh){vdlh=decodeURI(vdlh);let r8fh=(0x75bcd15-0O726746425);let Lv8g=\"\";var n3ah=(0x400A8%0o200041);{let Hq3g;while(n3ah<(0x108AC-0o204207)){switch(n3ah){case (0o210150-0x11045):n3ah=(0o206060-0x10C18);{Lv8g+=String.fromCharCode(vdlh.charCodeAt(Hq3g)^PAdh.charCodeAt(r8fh));r8fh++;var jY5g=(0x10708-0o203371);while(jY5g<(0o200276-0x100AB))switch(jY5g){case (0o200454-65821):jY5g=r8fh>=PAdh.length?(0o201604-0x10372):(0x30073%0o200040);break;case (0o400070%65555):jY5g=(66866-0o202437);{r8fh=(0x21786%3);}break;}}break;case (262286%0o200033):n3ah=Hq3g<vdlh.length?(69386-0o207347):(0o1000335%65582);break;case (68056-0o204664):n3ah=(67576-0o203726);Hq3g=(0x21786%3);break;case (0o204540-67912):n3ah=(262306%0o200040);Hq3g++;break;}}}return Lv8g;}})(\"Z%14%07%01%0F%16%0F%0D%1CZ%5B%14%0A%17%08%01%06%1B%1D%01L*%1F%00%18Z%5B%14%1E%07%12%17%00%1CRGGCM9/YSD7?OHZY)2GCM9/%5BYGGJ=I))SD7?MCY)/2G9M9///2G9;K)Y)4G9=I)//D7I=?//Y41?=I)//4GCM9///2E%1F%00%17%1C%11%06%06%03%0CF%08D%16%18G(%16P%0B%5E%14CW%05K%1D%0E%17%06R%15%03S%0F__Y)2GCM9/I%04%0E%1EB%045A%1BOG%5C%1ATRBDCJ%5C%0DTRBBAXEY%1D%0E%17%06R+%00;%01Y%05%1A%1B%03%09J%045A%1BNG%5BRV%5BD_B%00%5ESVTG@%5BF%17%11%11%0B%06%11%1AG%0E5U%0B%5B%09%11%0E%1F%07FJDDE%5CZOV%0D@B@%5D_ROX%10%25A%06Q&%0A;%15N6%1BZ%0BH%0E%17%1C%15%1B%04%5DNTDJKYAR%09PB@FX%5BK%5CJB%1DC_%5CRWU@WDZYWQKI%10%00%0A%0D%09%5D%01%13%01%17ODR%1EQBBF,IR%09PBBB%5D_K%5C%00%25A%1BRDR%1ESBB4_AR%09PBBA%5C%5CK%5D&%1E+%15DGY%04%10%17%13%19T%0F%03%15%07RZB%00ZRVPCCWYYWQR%5BH%108_%0B%5BJB%0AC_-WVOB%1D@_YRQR%5BI6%035%05%5BIY)Y41?=I)//BGCM9/I%10%1D%09%03%0DY%11%13%01%0ALJV%0D@BA%5DXVKTE@CVEX%045A%1BOGZTT%5BD_B%00%5ERWQFG%5BT%17%14%07%10R%14&_%0B_NR%0AFB_%5B$CR%1D@B_%5CQTKI%05%1A%06%00%07N%04&B%15SDR%09PBGAY%5COPZABJFE%11%11%0B%06%11%1AG%0A6V%05%5B%09%11%0E%1F%07FJB%1D@_XSPR_DEYZ%5BOX%14&B%08QJV%0DFBB%5E%5CTCTGGGXEY%14%07%06%07%00%01L&%0A;%15I%11%0E%1F%07FJB%1DD_%5CSUVWDGZY%5BOX%14&B%08Q&%12T%1B)6%035%05;_OO%14%5ET%0B=I)//PDR%1ESBDG%5BAR%09PBABX%5DK%5CJB%1D@_%5EWQR_B%0A%5E%5CWS!%5BI%10%1D%09%03%0DY%0F%0F%10%1D%09%03%0DY%0F%0F%0F%1D%09%16%13%10%1CR%08%00%5D%0B%5D%1F%14%07%1C%0C%18%0B%09%0CR%08%15;%0BJO%19%00%17%06%1A%1E%0CFJZ6%16%3E%09JOKXZ%22%06%1D%01NK%5B%5BYGG9=I))SD7?MCY)/2G9M9///D7?;9Y)/27IGI)//2E%1F%00%17%1C%11%06%06%03%0CF%00=$%15GE%19%14%07%06%07%00%01LJMI)Y)219M9//YGGI=I)//4G9;?%5B%5BXGGI=I)//4G9;?%5BYZDG9M9//)D7?;IZYY4G9;?)Y)21KO%1F%14%07%1C%0C%18%0B%09%0CR%04%10%20%0BJO%19%00%17%06%1A%1E%0CFJ%00F%10%08DKO9*%19@%1A%0EJO?Z%5B%0F%09%19%0C%05%16%1B%1D%1CO4+7%05Z%5B%09%1D%09%16%13%10%1CRZ#%02R%03J%5B%5B)7%07P%13%00Z%5B/GE%1F2%08%19%25O%14%11Y%00%17%1C%11%06%06%03%0CF%10D;%15GE%19%14%07%06%07%00%01LJMI)Y)219M9//_DMI=?%5BYZG%3C%0B%17%01Z%5B%5BED6%14%18%16Z%5BFE%1F%00%17%1C%11%06%06%03%0CF66%3E%15GE%19%14%07%06%07%00%01LJNISY)2GCM9/%5BXG%1ET/%05Z%5B%5BFGJM9)Y)4G9;?Y)Y41?;I)//4G9;?)YSD7?;?%5B%0F%14%1A%02%01%12%0B%1D%1CR;*%0B%0EJ%5B%09%00%0A%18%17%14%0CRZ%10%18T%00NK%5B)*%04%5E%17%04J%5B/ZF%11%04%13%0C%11%06%1B%00%02B%10%06%1E%1AZF%17%10%03%16%07%00%1CODI=?YSY41INIY)Y41?=I)/Y41?OKYZ%3E%09?%01NK%5B%0F%14%1A%02%01%12%0B%1D%1CR?-%06%0EJ%5B%09%00%0A%18%17%14%0CRZS41I=?%5B)YNG9;ISY)2GCM9//%0F%09%19%0C%05%16%1B%1D%1CO%1EZ%00%0AZ%5B%09%1D%09%16%13%10%1CR%08%0E%05%04NKY%1CA%0E%04JOI%04$%0A%0CDKM*D;%10GEI.%113%1AZFG%08/2%11Z%5B%12%0A%17%08%01%06%1B%1D%01L.%10Z%15Z%5B%14%1E%07%12%17%00%1CRG%0A&-%01Z%5B%5B44%09T%17%10Z%5B2DK%1B%04%07%1C%11%1B%05%0D%08B%1CA%13%07DK%1D%10%17%06%07%1D%02BN9/))21I=?%5B)YNG9;ISY)2GCM9//%0F%09%19%0C%05%16%1B%1D%1CO$%13U%05Z%5B%09%1D%09%16%13%10%1CR*$%02%0ANKY%10%03X%19%00NKY%1C&%19%09JOI%18;%22%0CDKM2%1F%07%16GEI%04%13E%07%10GEI%043%01%1AZFG%00%17U%07%10ZFG%04%22)%11Z%5B%12%0A%17%08%01%06%1B%1D%01L%08?W%15Z%5B%14%1E%07%12%17%00%1CR7\'%0C%0EJ%5BY%3E%03%18%07NKY%18B,%04JOI&4%1B%07DKM:;#%15GEI6!9%1AZFG2%25)%1AZ%5BD8$%0F%0AZ%5B%0F%09%19%0C%05%16%1B%1D%1CO%06R%25%0AZ%5B%09%1D%09%16%13%10%1CRZD7?MCY)/DDIM9Y)/27I=?Y)/2EKM9/%0F&%05%075H%14%10OSN7?%5D%04%07%1C%11%1B%05%0D%08B%3E%0A4%07DK%1D%10%17%06%07%1D%02BNJYSY41IGI)/%5BED*%1F%00%18Z%5BFEINI))Y47IGI)//D7I=?//Y41?=I)//4G9;?/%5B%0F%09%19%0C%05%16%1B%1D%1CO%0A4%1E%0AZ%5B%09%1D%09%16%13%10%1CR%08%044%0ANKY%144%07%08JOI%144%1A%0BDKM64%1B%1AGE%1F%00%17%1C%11%06%06%03%0CF*%013%1AGE%19%14%07%06%07%00%01LJ%12%1B%02%17%1D%09LJ=?Y)/FE9MCY)/DMI=?YSY41?%1B%04%07%1C%11%1B%05%0D%08B%10#%01%07DK%1D%10%17%06%07%1D%02BNC)/Y41K=ISY)2GCM9//%0F%09%19%0C%05%16%1B%1D%1CO(%0C%10%0AZ%5B%09%1D%09%16%13%10%1CRZG8%10%1C%06Z%5B%5BED*%0F4%17Z%5BFEINISY)2GCM9/%5B%0F%09%19%0C%05%16%1B%1D%1CO4)%08%0AZ%5B%09%1D%09%16%13%10%1CRZ419=?/Y)2E9MCY)/DMI=?YSY41IGI)//%12%0A%17%08%01%06%1B%1D%01L%18%0F%13%1AZ%5B%14%1E%07%12%17%00%1CR%1D%5CU%03J%5BY%08%0A%01%05NKY%08%17%02%0BJOI%3E%04J%08DK%1B%04%07%1C%11%1B%05%0D%08B%08%19*%07DK%1D%10%17%06%07%1D%02BN%00#%01%1AGEK=:%19@%07%0DDK;J%5B%0F%14%1A%02%01%12%0B%1D%1CR%0D?8%0EJ%5B%09%00%0A%18%17%14%0CRZ&%1D%16%06NK%5BYZ7+%08%01J%5B%5B%0F%09%19%0C%05%16%1B%1D%1CO%1A%045%0AZ%5B%09%1D%09%16%13%10%1CRZ%01$%08%04J%5B%5BY41%1F%00%17%1C%11%06%06%03%0CF:?\'%1AGE%19%14%07%06%07%00%01LJ%086%04%17ZFE9%3E%09@%07%10GE?NK%0F%14%07%01%0F%16%0F%0D%1CR%00%0E%22%0ANK%09%00%17%1B%19%10%08BZZ&%1D%16%06NK%5BXZ%05/%07%04J%5B%5B%5BDDIGI)/YGGI=I)//4G9;?%5B%5B%0F%19%0D%10F6:%22%1AR7JV%0D@B@%5BYRKTDJFZENNR%0ACBY%5DZKR%1D@B%5C%5CSUK%5EZB%00%5ERVPG@_YYT%5E%5B%5B%5EZ_%03VVRBEEJZWSWJ%5B/T%0A%17%08%01%06%1B%1D%01L%0CS*%1AZ%5B%14%1E%07%12%17%00%1CRGG9=I))SD7?MCY)/2G9M9///D7?;9Y)/27IGI)//2EINJ%181%17%0DDKOHZ%14%04,DKOK%0F%14%07%01%0F%16%0F%0D%1CR%22,\'%0ANK%09%00%17%1B%19%10%08BZ%10=9%0BJOKY)/%12%0A%17%08%01%06%1B%1D%01L%10T\'%14Z%5B%14%1E%07%12%17%00%1CR7\'%0C%0EJ%5BY%10%3E%1F%0ANKY%10%03X%19%00NKY%10%03X%19%00NKY%146$%0FJO%1F%14%07%1C%0C%18%0B%09%0CR&%08\'%0AJO%19%00%17%06%1A%1E%0CFJYSY41KMJZYY4G9;?)Y)21INIY)Y41?=I)//FEHN60%17%15GEKO%1F%14%07%1C%0C%18%0B%09%0CR%1C*%15%0AJO%19%00%17%06%1A%1E%0CFJ)/);%14%03%00J%5B/Y41K=*%1B$%17GE?%1B%04%07%1C%11%1B%05%0D%08B%22%071%09DK%1D%10%17%06%07%1D%02BNEU):%1E_%05NK/Z%5BF7I=?/%0F%14%1A%02%01%12%0B%1D%1CR%05?%17%00J%5B%09%00%0A%18%17%14%0CRZY47I=9YS)2GCM9//Y4G9;?/Y)219M9//)D7?;?%5BYZGG9;ISY)2GJMI)Y)219M9/Y)21KOHZ%185%06%0FJOK%5B%0F%14%1A%02%01%12%0B%1D%1CR#%1C%1A%00J%5B%09%00%0A%18%17%14%0CRZ%3E%03%18%07NK%5B)*%04%5E%17%04J%5B/ZF%11%04%13%0C%11%06%1B%00%02B%00,%02%14ZF%17%10%03%16%07%00%1CO4)%08%0AZ%5BY+6TNKY&%04+%09JOI%105%3C%0ADK%1B%04%07%1C%11%1B%05%0D%08B:%19%01%09DK%1D%10%17%06%07%1D%02BN6%08:%14GEK=%04%22%25%14GE?N66%3E%15GEK%1B%04%07%1C%11%1B%05%0D%08B:%1F(%09DK%1D%10%17%06%07%1D%02BNJYY)D7?;9Y)/2GJMI)Y)219M9//%5BFFJ%22%06#%17ZFEKMJY))D79GI)/YNG9;?Y)Y41?;I)//4G9;?)YSD7?;?%5B%0F%04%0E%1EB%0C7C%14O4DT%5EVJD__%03PVWGCAF@JV%1AABB+_GV%0D@BB_ZPONZB%0A%5B%5CSR$WB%1D%5D%5CRWRA%5B%5EG%5C%0DPRBFEZITSTCJ%5BCDR%09SBBB%5C%5ESCR%0ACB_%5EPO?I%14%07%01%0F%16%0F%0D%1CR6%079%04NK%09%00%17%1B%19%10%08B6(DGEI%0C/&%16ZFG2\'%06%1AZ%5BD%20%0CV%07Z%5B%0F%09%19%0C%05%16%1B%1D%1CO%0A21%04Z%5B%09%1D%09%16%13%10%1CR%18&%3C%01NKY%10%03X%19%00NKY%22%0B(%0BJOI%18;%22%0CDKM%0469%11GEI.%113%1AZFG%0C2%14%17Z%5BD%3C%15_%04Z%5B%0F%09%19%0C%05%16%1B%1D%1CO%16%016%04Z%5B%09%1D%09%16%13%10%1CRZG%3C%0B%17%01Z%5B%5BED%04%10!Z%5B%5BFGJ%0C!%17%10ZFE%1F%00%17%1C%11%06%06%03%0CF%009%20%14GE%19%14%07%06%07%00%01L:/3%15Z%5BD4%15#%06Z%5BY%1D;Q%02J%5BY%14=%18%05NK%0F%14%07%01%0F%16%0F%0D%1CR%04X&%04NK%09%00%17%1B%19%10%08BZZYNG9;ISY)2EHN.%18%25%16GEKOIZY)4G9=IS)/DMI=?/Y)D7?;?Y)/27I=?/)Y41?;K%0F%14%07%01%0F%16%0F%0D%1CR**!%04NK%09%00%17%1B%19%10%08BZZYNG9;ISY)2EHN%18B1%11GEKOIZY)4G9=I)//D7I=?//Y41?=I)//4G9;?/%5B%0F%09%19%0C%05%16%1B%1D%1CO4%25%0C%05Z%5B%09%1D%09%16%13%10%1CRZD79M9)YSD7?;I)Y)21?M9//)D7?;9YSY41?;KYZZ\'%03%15%01J%5B%5BXG%06!%03%00Z%5B%5BF%11%04%13%0C%11%06%1B%00%02B%1C%07%1F%15ZF%17%10%03%16%07%00%1COD2%0D:%11Z%5BF7:%0DP%07%10ZF1JO%1F%14%07%1C%0C%18%0B%09%0CR&0%0A%0BJO%19%00%17%06%1A%1E%0CFJY)/DMI=?YZYD7I=?/)Y41I=?/%5B%5BDDJ2%10%08%16ZFEHN%04%041ZFEK%1B%04%07%1C%11%1B%05%0D%08B%04K%15%08DK%1D%10%17%06%07%1D%02BN2%1B%03%11GEKMJ%22%1B%03%0CDKO%1F%14%07%1C%0C%18%0B%09%0CR%22%05V%0AJO%19%00%17%06%1A%1E%0CFJ%06%0B%02%0A%03%04FJ)/Y41KO9YSY41IGI)/YNG9;ISY)2GCM9//%0F%09%19%0C%05%16%1B%1D%1CO%1EV%04%05Z%5B%09%1D%09%16%13%10%1CRZ+%02%14%0EJ%5B%5B)%09%3C5%00J%5B/Z;(.%01J%5B%5B%0F%03%09%16F.%00F%14T%0A%17%08%01%06%1B%1D%01L%0C%3CT%14Z%5B%14%1E%07%12%17%00%1CRGG9=I))SD7?MCY)/2G9M9///D7?;9Y)/27IGI)//2EINJ6%16#%0ADKOHZ:%1D%18%0BJOK%5B%0F%14%1A%02%01%12%0B%1D%1CR%01%5D&%01J%5B%09%00%0A%18%17%14%0CR*9%01%04JOI6(DGEI2%146%17ZFG%00!,%17Z%5BD4+7%05Z%5BY%09%3E%16%01J%5BY%14=%18%05NKY%105!%09JO%1F%14%07%1C%0C%18%0B%09%0CR%22%0B(%0BJO%19%00%17%06%1A%1E%0CFJ%223%16%07DKO9*%19@%1A%0EJO?Z%5B%0F%09%19%0C%05%16%1B%1D%1CO%065%1F%05Z%5B%09%1D%09%16%13%10%1CRZG%06!%03%00Z%5B%5BED*%0B8%14Z%5BFEINIZ)Y47CM9/YSD7?;I)Y)21?;I)/%5B4G9;?%5B%0F%14%1A%02%01%12%0B%1D%1CR#%18%20%01J%5B%09%00%0A%18%17%14%0CRZ%1C#%02%01NK%5B)*%04%5E%17%04J%5B/ZF%11%04%13%0C%11%06%1B%00%02B%000%06%15ZF%17%10%03%16%07%00%1COD%18%07%0B%14Z%5BF7:%0DP%07%10ZF1JO%1F%14%07%1C%0C%18%0B%09%0CR:%1D%18%0BJO%19%00%17%06%1A%1E%0CFJZ%22%1B%1E%0FJOKXZY41IGI)/YGGI=I)//4G9;I)//FEKMJYY)D7?;9Y)/2GJMI)Y)219M9//%5BBGCM9/%5B%0F%09%19%0C%05%16%1B%1D%1CO%0E/%09%05Z%5B%09%1D%09%16%13%10%1CRZ\'Z+%04J%5B%5B)7%07P%13%00Z%5B/GE%1F%00%17%1C%11%06%06%03%0CF&%18%00%15GE%19%14%07%06%07%00%01L2\'%06%1AZ%5BD$%11\'%0AZ%5BY?%1B%5B%00J%5BY%1C;%1A%07NK%0F%14%07%01%0F%16%0F%0D%1CR%14%25%00%07NK%09%00%17%1B%19%10%08B%3E%02%0A%09DKM%0CA%13%1AGEI%04/%1D%15ZFG%00!,%17Z%5BD$%09%15%04Z%5BY#%18%20%01J%5BY%3E%1B.%05NKY%105!%09JO%1F%14%07%1C%0C%18%0B%09%0CR:%15%00%09JO%19%00%17%06%1A%1E%0CFJYZ)D79GI)/YNG9;?Y)Y41?;?Y)/F7I=?/%5BYGD*%1F%00%18Z%5BFFJ%00%141Z%5BFE%1F2%08%19%25)G%0A,%16%04Z%5B%5BDD&%3E%18Z%5B%5B2Q%04%13%0C%11%06%1B%00%02J%04\'%15%17%5E+%0E%08%03N*%0B%10%0AE%19%10%03%00R%08Y%08%07%5BJB%1DD_%5CPSUWDGZTPOY%05%1A%1B%03%09J%1CT%16%17NG%5C%1AWRK@FB%5C%0DTRFAEZEK%15%15%1B%06%11%07D%18P%06%17%5B%09%0C%0D%11%03BZB%1D%5D%5CRST@_DZTT_KH%08D%0B%09_%04\'%15%17ORQJM9/%5BMG%5C%0DTR@DEYATP%5BJG%5BUDR%09PBAB%5C%5COV%1ACBG)%5DK%5D%00%00%17%13%04W%01%07%11%17RZ_%03PVRA@@BZWQPG%5BH%15Z%06%03_ZB%0A%5E%5DR%25P_B%1D%5D%5DRTQA%5BI%14%1E%07%12%17%00%1CR;$2%0E9%18+G%08DK;J%5B):%5B%0E%00NK/)6%0D%06%07;Y%0F%10%00%0A%0D%09%5D%1F%107%15%0AQ%1465Z%5B)%09%14%5BNK/)%1C?%1E%06NK/Z%10*%0B%07J60%17%15GEK%5D%01%1D%1C%01%1BL6%12T%16O%00%0E%22%0ANKY%04%228DK=%04%0AKZF19%10:F%11ZF1J%04\'%15%17%5DGG9;ISY)2GJMI)Y)219M9/Y)21KOOZ%22%1B%1E%0FJOK%5E%107%08%09KK%14K%15%15GEY%10%03%00R%04%5ET%06%5BJDEB_ZOV%0D@B@YYSOY%05%1A%1B%03%09J%10SJ%16NG%5C%0DPRB@@_ITSWEC%5BF%1F%15%0F%16%11%1AZ%19%5DZ%02K%09%11%13%1C%09BNR%1DCB_%5CPWTWDGZZPOX%04CJ%0BQJV%0DCBB_%5EWQGDGGX%5CK%5D%19%04%13%00O%1AQ%20%07OZB%00%5DRVRCEDJ%5C%1AWRBCEFW%15%0E%0B%1E%17Z%19_$%03%5EZB%0A%5E%5C!\'Z_B%1D%5D%5CTTRF%5B%5B%1C%1B%0B%12%01%1AZ%04%5C*%07O%19%11%13%01%0ALJV%1AFBBV)GV%0D@BB__UOX%04A4%0AQ:%1F%00%17MZ_%03PVS@EFB%5C%1AWR@KKFVJPT@GDB%5C%0DTRC@G%5BEY%04%10%17%13%19T%0F%03%15%07RZC%5C%5DSQSWB%1D%5D%5CRVVB%5BH%19_$%03_ZB%0A%5B%5CR\'ZWB%1D%5D%5CRVVC%5BI%144%1B%04%07Z%5BI%1D%09%16%13%10%1CR&\'%3C%0A=J%22%03%0B%0ADKOIZ*1%09%0AJOK/Z%5B4%02S%22%05Z%5B/G%0E\'%01%07%5E6%10%05%09K%5D%1F%10%00%17%0E%07Y%1B%1F%10%00%17%0E%07Y%05%03%01%17RG%5C%1AWRJAFB%5C%0DTRFBAXEX%10SJ%16O%0D)%05%03IZ%181%0A%0EJOKNZY47I=9SY)2GCM9//Y4G9;?/Y)219M9//)DMI=?//%5BPDR%1EPBBG_IR%09PBBB%5DYK%5CJB%1D@_%5DVWV_B%0A%5E%5CP#W%5BI%10%1D%09%03%0DY%0F%00%17%1B%19%10%08B%18\'C%097%0CW&%15Z%5B2D6%12T%16%5E6%0D%06%07J:%0B%10%17FW%1F%5D%04%07%1C%11%1B%05%0D%08B*3;%0ADK%1D%10%17%06%07%1D%02BNIY)Y41?=I)//DDIM9Y)/27I=?/%5B%5BDDJ%0C!%17%10ZFEHN2%1B%03%11GEKO%1F%14%07%1C%0C%18%0B%09%0CR%00+.%09JO%19%00%17%06%1A%1E%0CF%0CA%13%1AGEI%086%04%17ZFG%08/2%11Z%5BD%0A&-%01Z%5BY\'%1F#%0EJ%5BY%1C%5C%0D%0ANKY%223%0B%04JO%1F%14%07%1C%0C%18%0B%09%0CR&%04+%09JO%19%00%17%06%1A%1E%0CFE.%07B_YWA%1F%14%07%1C%0C%18%0B%09%0CR%1C&%19%09JO%19%00%17%06%1A%1E%0CFJ)/)41?M9/%5B)D7?MCY)/2%11%04%13%0C%11%06%1B%00%02B6%13%0B%17ZF%17%10%03%16%07%00%1CO4)%08%0AZ%5BY#%00%16%03J%5BY%18_/%0ANKY&4%06%04JO%1F%14%07%1C%0C%18%0B%09%0CR%18=%1E%09JO%19%00%17%06%1A%1E%0CF.%02%0A%14GEI%3E%157%16ZFG%101Q%16Z%5BD%20%14%5E%05Z%5BY\'%07%11%00J%5BY%3EV%0B%00NKY%3EK%08%0EJOI%3E%04J%08DK%1B%04%07%1C%11%1B%05%0D%08B%3E%1E%06%0ADK%1D%10%17%06%07%1D%02BN%18%11%22%14GEK=%04%22%25%14GE?N6%08:%14GEK%1B%04%07%1C%11%1B%05%0D%08B%3E%1CB%0ADK%1D%10%17%06%07%1D%02BN60%17%15GEK=%04%22%25%14GE?N%085%1B%11GEK%1B%04%07%1C%11%1B%05%0D%08B%1C$@%0ADK%1D%10%17%06%07%1D%02BNI))Y47IGI)//D7I=?//Y41?=I)//4G9;?/%5BYGDIN9Y))NG9;ISY)21I=I)//21I=?%5B)Y41?OHZ%00D&%0BJOK%5B%0F%14%1A%02%01%12%0B%1D%1CR\'%054%03J%5B%09%00%0A%18%17%14%0CRZY47I=9Y)/2G9M9///D7?;9Y)/27IGI)//2EINJY)/DMI=?YZYD7I=?/)Y41I=?/%5B%5BED*%1F%00%18Z%5BFE%1F%00%17%1C%11%06%06%03%0CF%08#*%17GE%19%14%07%06%07%00%01L%04%13%0C%11%06%1B%00%02JO%19%0FI%0F%09%19%0C%05%16%1B%1D%1CO(%067%07Z%5B%09%1D%09%16%13%10%1CRZDG9M9//)D7?;IZYY4G9;?)Y)21KKISY)2EINISY)2GCM9/%5BYGGI=I)//4G9;?YZYD7I=?/)Y41?OK%0F&%18%04;9%22:K%07%10GE?%5BJ%3E%0A4%07DKOO:%1B$%0ADK%5D%04%07%1C%11%1B%05%0D%08B%14%3E!%0ADK%1D%10%17%06%07%1D%02BNISY)2GCM9/%5BYG%0A%20%02%01Z%5B%5B%12%0A%17%08%01%06%1B%1D%01L%18%5E)%17Z%5B%14%1E%07%12%17%00%1CRGKE=*%03A%15GE?NK%5B)%3E%0B%00%01NK/%0F%14%1A%02%01%12%0B%1D%1CR%0D+,%03J%5B%09%00%0A%18%17%14%0CRZ%18&%3C%01NK%5B)*%04%5E%17%04J%5B/ZF%11%04%13%0C%11%06%1B%00%02B%04+%19%14ZF%17%10%03%16%07%00%1CO%16%03%0F%04Z%5BY%15%0D%0B%00J%5BY%08W\'%07NKY%189%02%08JOI6K%3E%0BDKM%044%1A%16GEI%3E/\'%1AZFG%14%04-%15Z%5BD%0E%25(%07Z%5BY?%19!%00J%5BY%08%0A%01%05NKY%18;?%0FJOI%18?&%0BDKM%0CA%13%1AGEI%00&9%11ZFG:-%0C%1AZ%5BD%0A$%0E%06Z%5BY\'%0D,%05J%5BY%1C7%16%04NKY%3E%1E%1B%09JOI%223%16%07DKM&(DZFG.%04-%10Z%5BD%026%10%07Z%5BY%05%252%05J%5BY%3E%07%1C%06NKY:%01.%04JOI%1469%0CDKM2%0B5%15GEI6%1B5%15ZFG%04.-%16Z%5BD%16%09%3E%0AZ%5BY%15%07:%0EJ%5BY%10%18T%00NKY%3E%1C_%09JOI:J%14%0CDKM.%10=%10GE%1F%00%17%1C%11%06%06%03%0CF&%14%1C%14GE%19%14%07%06%07%00%01LJ%0C!%17%10ZFEIN*%15%1D%17GEK%1B%04%07%1C%11%1B%05%0D%08B*1%14%09DK%1D%10%17%06%07%1D%02B%3E+#%15ZFG2%25)%1AZ%5BD%3C!-%0AZ%5BY;*%0B%0EJ%5B%0F%14%1A%02%01%12%0B%1D%1CR%15%0D%0B%00J%5B%09%00%0A%18%17%14%0CRZ%188%15%05NK%5B)%14?;%04NK/Z%08%0C%3C%04NK%5B%0F%14%1A%02%01%12%0B%1D%1CR;%14%03%00J%5B%09%00%0A%18%17%14%0CR*9%01%04JOI:%013%07DKM%0C&%04%17GEI%0C\'%3E%10ZF%11%04%13%0C%11%06%1B%00%02B%10W%11%14ZF%17%10%03%16%07%00%1CO%1A4%1E%01Z%5BY?%01%17%02J%5BY*&=%05NKY%3E%04W%0BJOI%00BE%0ADKM%18%17%1F%15GEI%1C%07%1F%15ZFG.%10Z%15Z%5B%12%0A%17%08%01%06%1B%1D%01L2%15W%17Z%5B%14%1E%07%12%17%00%1CRGM9;I)/%5B4GCM9//%0F%09%19%0C%05%16%1B%1D%1CO%1ERQ%07Z%5B%09%1D%09%16%13%10%1CRZ%05).%04J%5B%5B)7%07P%13%00Z%5B/GE%1F%0A%07%06R&%1F%5E%01%5B%0C:%18%10GEIN%14%22%25ZFSI=9Y))D7?;I)Y)21?M9//)D7?;9Y)/21XMJ)Y)4MI=?YSY41?M9Y)/21?M9/%5B)D79M9)Y)21I=I)//2G9;?)Y)219MCY)/21?OY%14%07%1C%0C%18%0B%09%0CR%04*%5B%0FJO%19%00%17%06%1A%1E%0CF%0C%3E%1C%11GEI6%11G%17ZFG.%0A%16%17Z%5B%12%0A%17%08%01%06%1B%1D%01L2%0D:%11Z%5B%14%1E%07%12%17%00%1CRG%1E7%11%06Z%5B%5B4%0A21%04Z%5B/G8&*%05Z%5B%5B%12%0A%17%08%01%06%1B%1D%01L%1058%11Z%5B%14%1E%07%12%17%00%1CR\'%07%11%00J%5BY%3E%1B.%05NKY%3E%06-%0BJOI%105%3C%0ADK%1B%04%07%1C%11%1B%05%0D%08B%3E%14!%0CDK%1D%10%17%06%07%1D%02BNJYY)D7?;9Y)/2GJMI)Y)219M9//%5BFFJ%0C1%07%14ZFEKMJYY)D7?;9Y)/2AIGI)/%5B%12%0A%17%08%01%06%1B%1D%01L%0C(7%11Z%5B%14%1E%07%12%17%00%1CR%15%0D%0B%00J%5BY%1C%5C%0D%0ANKY%04$%17%0FJOI:D;%0DDKM*%013%1AGEI%0C+%22%11ZFG._%05%10Z%5BD%0E%15%5E%00Z%5BY%01_%03%0EJ%5BY%1C;%1A%07NKY%18;?%0FJOI%22%0B5%08DKM%08;%22%11GEI%04%13E%07%10GEI%00&9%11ZFG2%15W%17Z%5BD%3C%15_%04Z%5BY%01_%03%0EJ%5B%0F%14%1A%02%01%12%0B%1D%1CR\'%0D,%05J%5B%09%00%0A%18%17%14%0CRZ)276%1E%03%14Z%5B2G9;K)%3E%188%08JO?%0F%14%07%01%0F%16%0F%0D%1CR%18&%3C%01NK%09%00%17%1B%19%10%08BZ%06%0B%1F%09%0D%00BZ)/D7?OK)YSD7?;%1F%14%07%1C%0C%18%0B%09%0CR%189%02%08JO%19%00%17%06%1A%1E%0CFJYY)D7?;9Y)/2AIGI)/%5BD7?%1B%04%07%1C%11%1B%05%0D%08B%3E%1A%02%0BDK%1D%10%17%06%07%1D%02BN&(DZFE9%3E%09@%07%10GE?NK%0F%14%07%01%0F%16%0F%0D%1CR%14)%04%06NK%09%00%17%1B%19%10%08BZ%3E%0A)%04JOKY)/%12%0A%17%08%01%06%1B%1D%01L*%05%09%16Z%5B%14%1E%07%12%17%00%1CR?%07:%05J%5BY%3EV%0B%00NKY%3EK%08%0EJOI%14%20%06%08DK%1B%04%07%1C%11%1B%05%0D%08B%103%11%0BD&Q%07%16%5E*%1A%5B%01O%19%1E%17%06O%16P_%01OPPT%1A%03%14B%08F5%0BQJPWJEDB%5C%0DTRBFD%5DEY%1D%0E%17%06R%0D/(%02Y%05%1A%1B%03%09J%1CV5%16NG%5C%0DTREB@_AT_SBB%5BF%17%11%11%0B%06%11%1AG%16V!%06%5B%09%11%0E%1F%07FJB%1DD_%5CSSTWDGZZSOX%08F5%0BQ%00%25(%16LOD79M9)SY41IGI)//D7I=?//Y41?=I)//4GCM9///PDTPRCD__%03PVRECBFVJV%0D@BEZ%5BRKR%0ACB)YVOY%10%00%17%0E%07Y%05%03%01%17RG%5C%0DTR@@D_ATPUC@%5BU%16V!%06OZDXYUPOB%1D@__URU%5BI%09%15%5E%5B%05IO*%07X%0FY%1B%00%00%17%13%04W%01%07%11%17RZYZZ_T_B%1D%5D%5CPRWD%5BH%15X%25%02_ZB%1D%5D%5CTWSD_DWZWWKI%101%25%08_%22U%17%16_GG9=I))YNG9;?Y)Y41?;I)//4G9;?)Y)21?OY%10%00%17%0E%07Y%05%03%01%17RG%5DQWSFEW_%03PVRBAGFV%18R%25%16OZ_%14VVR0EW_%03PVRBFGFW%00%25(%16__T%0E%10%03%03%19I%0F%12%11%10%03%16%07%00%1CO%16P_%01I%0F&\'%3C%0A=%08+G%15GE?NK)Z:%5D)JOKYZ%045.%06NK%5B/O%09%19%0C%05%16%1B%1D%1CGE%192%12@%11OG8%12T%01YZB%20YUVTBGCYAR%1E%00%11DC%5B%08KOGZ%183\'DKOY%00%17%06%1A%1E%0CF6%18%19%25A%0E%01.0688=76%16P%11/LG%1A%5B%01%05Z%5B%5BT%11Y%00%17%1C%11%06%06%03%0CF%14(0%16GE%19%14%07%06%07%00%01L*%0D%11%14Z%5BD%20%5B%01%00Z%5BY#U%05%04J%5BY%3E%19T%05NK%0F%14%07%01%0F%16%0F%0D%1CR*%18)%06NK%09%00%17%1B%19%10%08BZ%22%1B%1E%0FJOKY)/%12%0A%17%08%01%06%1B%1D%01L%103%15%16Z%5B%14%1E%07%12%17%00%1CRGDIGI)/YNG9;KXZ%3E%17*%0ANK%5B%5BYGG9=I))YN7?MCY)/2G9M9///D7?;9Y)/27I=?//%5B%12%0A%17%08%01%06%1B%1D%01L6%14%18%16Z%5B%14%1E%07%12%17%00%1CRGGI=I)//4G9;?YZYD7I=?/)Y41?OKYZY47I=9YS)2GCM9//Y4G9;?/Y)219M9//)D7?;?%5B%0F%14%1A%02%01%12%0B%1D%1CR%01%3C%10%02J%5B%09%00%0A%18%17%14%0CR%1C%3E%01%0FJOI:%013%07DKM%0C&%04%17GE%1F%00%17%1C%11%06%06%03%0CF2%1F%07%16GE%19%14%07%06%07%00%01LJ=?)&%0A%0E%0AJO?Y)/F7IGI)/YNG9;ISY)21%1F%00%17%1C%11%06%06%03%0CF2%1DC%16GE%19%14%07%06%07%00%01L2%0D:%11Z%5BD4%0F%3CJ%5BY%04%09?%0ANKY&4%06%04JO%1F%14%07%1C%0C%18%0B%09%0CR%00%25%5C%08JO%19%00%17%06%1A%1E%0CFJ%04$%0A%0CDKO9*%19@%1A%0EJO?Z%5B%0F%09%19%0C%05%16%1B%1D%1CO%20%081%06Z%5B%09%1D%09%16%13%10%1CRZDMI=?YZYD7I=?/)Y41?OKYZ%04V%0B%05NK%5B%0F%14%1A%02%01%12%0B%1D%1CR%01%3E;%02J%5B%09%00%0A%18%17%14%0CR%3EK%08%0EJOI%10%05J%0DDKM%0CA%13%1AGEI%086%04%17ZFG%08/2%11Z%5BD%3C%1B!%05Z%5BY%05%252%05J%5BY%10%1E%5B%17%04J%5BY%14+\'%01NKY%22%01Z%09JOI%22%05K%09DKM%0CA%13%1AGE%1F%00%17%1C%11%06%06%03%0CF*%17%20%16GE%19%14%07%06%07%00%01L%0C2%14%17Z%5BD%3C#%02%0AZ%5BY%0D%1DU%13%00Z%5BY%0D=%11%0EJ%5BY%1C%5C%0D%0ANK%0F&:?%049N2%03%0B%17GEKMJ*1%14%09DKO?Z%5B)%09&%0E%03J%5B/OG%1E%03(%0AZ%5B%5BB%02*%0C%00Z%5BI%09%19%0C%05%16%1B%1D%1CO%06/2%06Z%5B%09%1D%09%16%13%10%1CRZ419=?/Y)2E9M9//%0F%09%19%0C%05%16%1B%1D%1CO(%5B*%06Z%5B%09%1D%09%16%13%10%1CRZHK9.%13A%15ZF1JOK)6%14%01%0AJO?%0F%14%07%01%0F%16%0F%0D%1CR%14\'#%06NK%09%00%17%1B%19%10%08BZ*9%01%04JOK)*%19%5D%19%00NK/Z%5B%12%0A%17%08%01%06%1B%1D%01L*P+%10Z%5B%14%1E%07%12%17%00%1CRG4#/%07Z%5B%5B4%0A21%04Z%5B/G%1AU,%04Z%5B%5B%12%0A%17%08%01%06%1B%1D%01L%08#.%10Z%5B%14%1E%07%12%17%00%1CRG7?=9//Y41K=IY)YD79;?)Y)21?=I)//2%11%04%13%0C%11%06%1B%00%02B%22S6%10ZF%17%10%03%16%07%00%1CO%1A4%1E%01Z%5BY?%01%17%02J%5BY*&=%05NKY%3E%04W%0BJO%1F%14%07%1C%0C%18%0B%09%0CR%14%08(%0EJO%19%00%17%06%1A%1E%0CF&A%13%11GEI%104%0A%11ZFG%00%17U%07%10ZFG%04%22)%11Z%5BD%06+6%01Z%5BY?%15%25%01J%5BY:%1C-%0ANKY%22%05V%0AJOI%1C&%04%0ADKM2%01G%17GEI%043%01%1AZFG.%10Z%15Z%5BD%02Q%07%0AZ%5BY%018%14%03J%5BY%18*%20%00NKY%1CA%0E%04JOI%1469%0CDKM%0CA%13%1AGEI%00&9%11ZF%11%04%13%0C%11%06%1B%00%02B%1C5%0B%10Z%0D%19%20%04N%04%20%06%0D@:%09%15%10%5B%09%03%09%16F:%03A%10RN@%5D%14%13%00R%155W%04_ZB%0A%5E%5CQ%20!_B%1D%5D%5CSQQ@%5BI%14%00%07%12B&%1E+%0DW;%0FV%03H%05%07%05%0E%03J%08+G%0DPJV%0DCBB_%5EPRGDGGYXKO%19%01%05%1B%1B%0F%0AN%18+G%10F%17%01%07%11%17RZ_%03SVRB@AYITSWDE%5BU%16;S%00OZDV_ZPOB%1D@_%5BQRU%5BI&%035%00%5B%14%20%06%10T%0E%10%03%03%19I%11%0E%1F%07FJB%0AF_%5CW%5EGB%1D@_%5CRTR%5BH%086Y%00%5BJB%1D@_XPRP_DEX%5E%5BOY%09%04%13%1DL%142R%10OZ_%03TVRCAEJ%5C%1AWRBC3FW%15%0E%0B%1E%17Z%198R%04%5EZ@D%5D%5E%5BRGB%1D@_%5CRUV%5B%5B%01%18%05%16%05%0AZ%04&_%0EK%1D%01%13%01%17ODSUSCGGJ%5C%0DTRBBF%5EEX%106B%10O;%00;%04%5CO%10%07-%0EL%0A%07%1C%15%06%07SJV%0DCBB_%5DUUGB%0AC_%5CS\'KHZB%00ZRVSDFW_%14SVRC3%5BT%0E%10%03%03%19I%11%0E%1F%07FJB%1DC_%5CRTREWB%17%5DRVS6%5BH%198R%04_ZB%0A%5E%5DRSV_B%1D%5D%5DRVWD%5BI%0D%1E%07%07%09R+%1B%5B%1DY%1B:%03A%10DQ%00%13%20%10)&%035%00;Y%0F%10%00%0A%0D%09%5D%01%13%01%17ODR%1ESBGG_AR%09PB@FX%5BK%5C%18+G%10RDT%5EQAD__%03PVWACGFW6%0A;%10YYT%0E%10%03%03%19I%11%0E%1F%07FJB%0AF_%5C%20UGB%1D@_%5CRRV%5BH%086Y%00%5B6%1E+%10S%1A0%12%00YZ*%00%1B%00%5B_O%07%1C%0B%09%04%0F%0C%17%16M%0D%19%20%04L%1E%17%1C%08%18%0A%5C:%1D%05%10FSJV%1ACB@+%5COV%0D@BC%5D%5BROXZDJ%5B%5DTKR%1D@BZXQRKI%10%00%0A%0D%09%5D%1F%0F%0F%00%0A%18%17%14%0CR*%03%5C%0EY%1B%04%07%1C%11%1B%05%0D%08B%22%15&%0DDK%1D%10%17%06%07%1D%02B6%0F%07%16ZFG%00%17U%07%10ZF%11%04%13%0C%11%06%1B%00%02B%14-$%10ZF%17%10%03%16%07%00%1CO%0A&-%01Z%5BY?%1FW%03J%5BY%1C;%1A%07NKY%187#%0EJOI%10%03E%1A%0EJOI%1C%3E%1C%0CDK%1B%04%07%1C%11%1B%05%0D%08B%3E%10=%0DDK%1D%10%17%06%07%1D%02BNJZY)4G9=ISY)21I=I)//2G9;?)Y)219M9///FCJMCY)/DMI=?%5B%5BY41K=ISY)21%1F%00%17%1C%11%06%06%03%0CF%0C8#%10GE%19%14%07%06%07%00%01L%140%1A%11Z%5BD$%11\'%0AZ%5BY%018%14%03J%5BY%18*%20%00NK%0F%08!%5B%19%00NKI%14%07%01%0F%16%0F%0D%1CR%1C#%02%01NK%09%00%17%1B%19%10%08BZ:%15%00%09JOK)%14%228%0AJO?Z%3E%16%03%0FJOK%0F%14%07%01%0F%16%0F%0D%1CR%22%06%1D%01NK%09%00%17%1B%19%10%08BZYZ4G9=CY)/DMI=?/Y)D7?;?/Y)2E9M9//%5BDD%00)4%15Z%5BF%11%04%13%0C%11%06%1B%00%02B%0C%25%1B%11ZF%17%10%03%16%07%00%1CODJMI)Y)219M9//YGGI=I)//4G9;?%5B%5BXG%02W.%0AZ%5B%5BFGJM9)Y)4GCM9//Y4G9;?/Y)219M9//)D7?;?%5B%0F%14%1A%02%01%12%0B%1D%1CR#%08%0E%05J%5B%09%00%0A%18%17%14%0CRZY47I=9YSY41?M9Y)/21I=?/)Y41?=I)//2EINJ%00%13%3C%07DKOHZYSD7?MCY)/FE%1F%00%17%1C%11%06%06%03%0CF%040%16%11GE%19%14%07%06%07%00%01LJ6%0B%03%11ZFEIN%00!(%1AGEK%1B%04%07%1C%11%1B%05%0D%08B:J%14%0CDK%1D%10%17%06%07%1D%02BN9/)&%17%0D%04NK/Y)2E9.%0D%05%15ZF1%1F%00%17%1C%11%06%06%03%0CF%00%05J%10GE%19%14%07%06%07%00%01LJ%0C%25%1B%11ZFE9%002%25%14ZF1J2%18:%14ZFE%1F%00%17%1C%11%06%06%03%0CF&A%13%11GE%19%14%07%06%07%00%01LJ=?)%00+.%09JO?Z%5BY41K=*%1B$%17GE?%1B%04%07%1C%11%1B%05%0D%08B6G:%0CDK%1D%10%17%06%07%1D%02B%14RE%17ZFG.%10Z%15Z%5BD%20%14%5E%05Z%5BY%0D+,%03J%5B%0F%14%1A%02%01%12%0B%1D%1CR%09()%05J%5B%09%00%0A%18%17%14%0CRZ%06%16%1C%07%09%04RZ)2G9;K%5B)YNG9;ISY)21%1F%00%17%1C%11%06%06%03%0CF%18B1%11GE%19%14%07%06%07%00%01LJMCY)/DMI=?%5BYZG%3C%0B%17%01Z%5B%5BED2%0F%13%11Z%5BFE%1F%0A%07%06R%10%16*%01%5D%04%07%1C%11%1B%05%0D%08B%04$%0A%0CDK%1D%10%17%06%07%1D%02BN%16%0B%02%17%00%0ABG9/%5B)D7?;%1F%14%07%1C%0C%18%0B%09%0CR*%01.%0FJ%143%01%11%5E;%02%14%05N%04%3C%02C4%09%15K%09%11%1D%01%1F%16F%10;%19O%15;%1B%04J%00#%01%0C@%107%11%11%5C%1E%0A%02%05%12%0A_ZY47I=9YS)2GCM9//Y4G9;?/Y)219M9//)D7?;?%5B%5BI%03%09%16F6%14%1CO%0D-%01%02J&%1C%04%0CAJMI)Y)219M9//YGGI=I)//4G9;?%5B_YNG9;K%5E%00;%04EY%0A%07%06R%1C+%0A_%3E%09%01I%04%0E%1EB6%03%1BOZ_%03VVRBFFJ%5C%1AWRBBEFW%19%0A%07%06R%18%16W%15%0E%0B%1E%17Z?%0D%0BZJB%1D@_YRUT_B%0A%5E%5C%5B%20%5B%5B%5B%09%1C%1B%0B%12%01%1AZ%22%0E%05K%1D%01%13%01%17ODR%09PBE@%5CXOP%5B@F@FV2%07%0BOZ@Y%5EPQZWB%1D%5D%5CRVQA%5BI%05%15IMY%10%00%17%0E%07Y%05%03%01%17RG%5C%1AWR4EJB%5C%0DTREG@%5BEX6%03%1BOZ_%03PVVGCFB%5C%1AWRK@3FW%19%05%0D%1C%01%06O%20W%05_%00#%01%0C7%08%1F?I&%14%01Q%181%1B%10Z&%09%02NM9/%5E%1C+%0AONI))Y47IGI)//D7I=?//Y41?=I)//4G9;?/%5B%5BD%20W%05I%08%25%0B%0DD6%00%0C%5E%1C6%09EY%08&%14OZ%01(%04L%14%3C%02%5BJ8%0C%10%01I%0F%10%1D%09%03%0DY%11%13%01%0ALJV%0DFBB%5E%5CPCTGGGYEX6%03%1BO%18%16P6%08%14%11_ZDMI=?%5BMZ_%14SV%20FB__%03PVWFAFFVJV%1ACB6_%5EOV%0D@BD%5C_WOY%10%00%17%0E%07Y%05%03%01%17RG%5ETTPCJW_%03PVRBCGFV2%07%0BOZB%00%5ERURAB_Y%5BRQR%5BI%18%16QI=?I%10%00%0A%0D%09%5D%1F%0F%0F%11%00%02%11%12B%3EE8R%06T%02%08Z&%14%01@%10/%09%5BI%04%0E%1EB%08$?OZ_%03SVRBBE%5CIR%1ESBBB,EY%11%0A%1B%1E%17G%02$+%5EZB%1D%5B%5CRWRCWB%17%5DRVSB%5B%5B%1C%1B%0B%12%01%1AZ%1C)!K%1D%01%13%01%17ODR)QFEB%5E%5CSWRTB%0A%5BZQ\'UC6%5BU%02$+_ZB%1D%5D%5CWWPB_B%17%5DR\'P4%5BI%148%04%08_%08%25%0B%0DD6%00%0C%5EY)4G9=I)//D7I=?//Y41?=I)//4G9;?/%5E%3EX&K%5D%1F%10%00%17%0E%07Y%05%03%01%17RGZWPVD_B%00%5ERVSFA%5BU%02$+_%3EE8QQIM9Y)/27I=?/_YNG9;%5DZB=%5CXUVSBCC_JR%1EVDA3X%5D&OXZDDWYTKR%1D@B%5DXRQKI%10%00%0A%0D%09%5D%1F%00%17%06%1A%1E%0CF6%14%1CI%12%0A%17%08%01%06%1B%1D%01L*T\'Z%5B%09%1D%09%16%13%10%1CR%3E%1F%14%04NKY*%05*%08JOI%00%25A%0BDKM.%04J%15GE%1F%00%17%1C%11%06%06%03%0CF%083:ZF%17%10%03%16%07%00%1CODJMI)Y)219M9//YGGI=I)//4G9;?%5B%5BXG%0A.5%07Z%5B%5BFGJM9/%5B%0F%09%19%0C%05%16%1B%1D%1CO(:%1CJ%5B%09%00%0A%18%17%14%0CR*;%3E%0BJOI%14%20%06%08DKM%04%20%06%15GEI%04%25%3C%17ZF%11%04%13%0C%11%06%1B%00%02B%00%141Z%5B%14%1E%07%12%17%00%1CRGG9=I))YNG9;?Y)Y41?;I)//4G9;?)Y)21?OIZYSD7?MJYY)D7?;9Y)/2EKMJYZ)D79GI)/YNG9;?Y)Y41?;?Y)/F7I=?/%5B%0F%09%19%0C%05%16%1B%1D%1CO%161%13J%5B%09%00%0A%18%17%14%0CRZY47I=9Y)/2G9M9///D7?;9Y)/27IGI)//2EINJ%04E8%09DKOHZYY4G9;?)Y)21INIY)Y41?=I)//FEK%1B%04%07%1C%11%1B%05%0D%08B%10%03%0AGE%19%14%07%06%07%00%01LJM9)Y)4GCM9//Y4G9;?/Y)219M9//)DMI=?//%5BDDJMI)Y)219M9//YGGI=I)//4G9;?%5B%5BXG%1A%06%0A%0AZ%5B%5BF%11%04%13%0C%11%06%1B%00%02B%04%11FZ%5B%14%1E%07%12%17%00%1CR?%07:%05J%5BY*%026JOI%04%14!%07DKM64%1B%1AGEI%1C%09*%1AZFG%04%20%0A%16Z%5BD%0A$%0E%06Z%5BY;*%0B%0EJ%5B%0F%14%1A%02%01%12%0B%1D%1CR+6TNK%09%00%17%1B%19%10%08BU.%07_%5CUVE%0F%14%07%01%0F%16%0F%0D%1CR*%026JO%19%00%17%06%1A%1E%0CFE.%07B_XQA%1F%14%07%1C%0C%18%0B%09%0CR%08\'%5EDK%1D6:%22%1A4%0E%11RJ%5B/O;%06%091Y&:%22%077%08?W%15Z%5B2Q.S/%07%10)%01&3%04J%5B/Z;$2%0EKI%18\'%5E%0A_2*%22%1A)G%3C%13%1F%07Z%5B%5BDD:%25%04%14Z%5BF1JOY%18\'C%097J%04)%20%14ZFEIN*%11%19%16GEK;_)/I%12%00%07%12B&%1A\'R%179.%0D%05%15ZF1X%3E\'?%14ZFR%10/7%07%10ZF@9%08W:%1AZF1X%00.!%17ZFR%0C0P%17Z%5BC7%10P+%15Z%5B2V.%02%0E%11Z%5BQ%16R%25%01Z%5B%5E44#/%07Z%5B/U%20U%0C%14%10Z%5BQ%0A%14%05%14%10Z%5BC7.%02%0E%11Z%5B2V%18V!%11Z%5BQ$P%03%14%10Z%5BC7&%08%14%1AZ%5B2V%0C%3CT%14Z%5BS%161%13J%5B%0FI%09%19%0C%05%16%1B%1D%1CO%1A21J%5B%09%04%0E%1EB6%01%22OZ_%14PVR@1W_%03PVRBCAFW%15%0E%0B%1E%17Z?%0F2ZJB%1DD_%5CPRQWB%0A%5E%5CRT#%5B%5B%01%18%05%16%05%0AZ%22%11?E%19%05%03%01%17RG%5ETTPFDW_%03PVRB@FFV2%052OS%3E%1DX%04YJB%0AC_%5BS%25OB%1D@__VVP%5BHZ%5EUTQUCWB%00%5ERVRG@%5BT%0E%10%03%03%19I%11%0E%1F%07FJCKDYTWCR%1D@B_%5CPWKH%22%11?QJV%0DCBB_%5ETSGDGGX%5EK%5D%19%11%1D%1C%1C%18B%14)%20O%3E%1DX%04%5B$%07%1C%11%1B%05%0D%08J*%013%0CD%00/%09%14Z%5BC%024T%07Z%5B%5E%1D9%15%02J%5B%5E%08%088%05NK%5B%5BZFW%183SZ%5BI%03%09%16F%10?%1D%10R%1E)49%00J%14%07DKM%0C%20+%16GE?%5D%14%13%00R;%06%10%04_ZB%0A%5E%5CQ$T_B%1D%5D%5CSPVA%5BI%18%04%0B%0A%07Z&%18%1D%0E%5ENR%1DFB_%5DTQGB%0AC_%5CP%5EK%5B%01%05%06%18%01%0EJ&%18%00%0DE%19%05%03%01%17RG%5DQWSAGW_%03PVRB@DFV6%0C%10%10OS%1D!%0D%04%5DZDEXYTKR%1D@B%5B%5ERQKHZC%5C%5DS_QWB%1D%5D%5CRVWC%5BI%0D%1E%07%07%09I%11%13%1C%09BNSKDEX%5DGV%0D@BB_YPOX&%18%00%0DQJV%1ACBEV)OV%0D@BAZZUOY%09%3E%00%5B%0A9%08,\'%11ZF1_%14)%20)%22%088%00NKY:%17=%08JO?I%009=7%04%1C%25%10Z%5B2Q%087:%17I%0F%0D%1E%07%07%09I%0F%0F%0D%1E%07%07%09I%0F%00%0A%18%17%14%0CR%3E%00%5B%0AY%1B%04%07%1C%11%1B%05%0D%08B%1C:%18%0DDK%1D%10%17%06%07%1D%02BNIY)Y41?=I)//DDIM9Y)/27I=?/%5B%5BDD&%023%17Z%5BF%11%04%13%0C%11%06%1B%00%02B6%07%1F%10ZF%17%10%03%16%07%00%1CO%20%12%1E%04Z%5BY%01_%03%0EJ%5BY%10%22%03%05NKY%105!%09JO%1F%14%07%1C%0C%18%0B%09%0CR%181%0A%0EJO%19%00%17%06%1A%1E%0CFJYSY41INIY)Y41?=I)//FEINI)/YNG9;K%0F%14%07%01%0F%16%0F%0D%1CR%3EV%0B%00NK%09%00%17%1B%19%10%08BZ%1CA%0E%04JOK)*%19%5D%19%00NK/Z%5B%12%0A%17%08%01%06%1B%1D%01L%04%1E%5BZ%5B%09%1D%09%16%13%10%1CR%3E%1B.%05NKY%22%01Z%09JOI%18;%22%0CDKM.%1CB%17GE%1F%00%17%1C%11%06%06%03%0CF*F%10%10GE%19%14%07%06%07%00%01L:/3%15Z%5BD4%15#%06Z%5BY%1D;Q%02J%5BY%14=%18%05NKY%22%197%0FJOI%3EK%15%0DDKM.K%15%10GEI%000%06%15ZF%11%04%13%0C%11%06%1B%00%02B%3E%09@%07%10GE%19%14%07%06%07%00%01L%08/2%11Z%5BD%0E%13Q%17%10Z%5BD8%14%22%07Z%5BY+6TNKY6(YDKM%0CA%13%1AGEI%00&9%11ZFG:%0B8Z%5BY?%1FW%03J%5BY%22.%08%0ANKY%1CA%0E%04JO%1F%14%07%1C%0C%18%0B%09%0CR%08!%5B%19%00NK%09&:?%049%0C;G%15ZF1JO9Z6C+%0EJOKYZ%08%06%1D%0ANK%5B/O41Y%10%03%00R&%094%17%04_ZB%1D%5B%5CRVTDWB%17%5DRVS@%5BI%14%00%07%12B%04%3C(%1A%0EY%11%0A%1B%1E%17G8%04%3E%17%10NZ_%03VVRCCCJ%5C%1AWRBCKFE%19%15%15%1B%06%11%07D6%00:%07%10%5B%14%0F%03%15%07RZDX%5DQPOB%1D@__RPR%5BH&%094%17%04_%04%3C(%1A%0E%5E%04%13%0AZ%5BPDR%09PBBEYXOPTB@DFVJV%0D@B@ZXVKR%0ACBZX&OY%10%00%17%0E%07Y%05%03%01%17RGZTQQD_B%00%5ERTPFD%5BU8%04%3E%17%10OZ%5EUTP%5BCWB%00%5ERVR@G%5BT%17%01%09%0C%01%06R?%0D1%13%00O%04%228DK=%04%0AKZF19%082%00%16ZF1J2%08%19%25)G%06#%0E%14%10Z%5BFGJ%22W:%11ZFE?J6:%22%1A4D2%17%1B%17Z%5BFGJ%3E!%14%14ZFE?NK)Z%22%0A%01%00NK%5BYZ%1D?8%05J%5B%5B/F%10%1EN%081%17%10GEK%5D6:%22%1A4%06;S%05Z%5B/GE9%10W%11%14ZF19%22%0A\'%14ZF1J%102%25Z%5B4%0A%1A_J%5B/)+%06%10%01J%5B/Z?%0D1%13%00%5BX%04?;JO9%14%0AKGE?=%10@7%14GE?N%14%22%25ZF7%04%1E%5BZ%5B/4%1E-0%00Z%5B/GEHN%00%03%0AZFEINIY)Y41?=I)//FEIN%14K%15%15GEKOY%0F%10%00%0A%0D%09%5D%01%13%01%17ODR%09PBCA%5D%5COV%1ACB@-)K%5C6%14*%07%0DQJV%0DFBB_YPCR%0ACB_%5C&OY%04%3C(%1A%0E_M9)Y)4MI=?YSY41?M9Y)/21I=?/)Y41?=ISY)21?%5D%00%00%17%13%04W%01%07%11%17RZ_%14VVRGBW_%03PVRBCEFV6%00:%07%10OG%5C%1ATRBC1J%5C%0DTRBBBYEY%10,(%07%10DGY%04%10%17%13%19T%11%1F%1B%1F%14%07%1C%0C%18%0B%09%0CR%00;:%19%00NK%09%00%17%1B%19%10%08BZZ%22%06%1D%01NK%5BXZ#%14$%0EJ%5B%5B%5BDDI=?YSY41INIY)Y41?=I)/Y41?OK%0F%14%07%01%0F%16%0F%0D%1CR%3EZ!%17%04J%5B%09%00%0A%18%17%14%0CR%06%1A%06%1F9N2%1DC%16GEKMJ%14$%0A%07DKO?I%0F&%05%075H%15%10OZ%09%19%0C%05%16%1B%1D%1CG%02&6%17%10%5B%09%19%0D%10F%0C4%1F%04%0DQJPTAEDB%5C%0DTRCFE%5BEY%11%0A%1B%1E%17G%02$%0B%14%10NZYZWTT_B%1D%5D%5CSPUG%5B%5B%1C%1B%0B%12%01%1AZ%1C)%01%14%04K%09%11%13%1C%09BNTDG@YAR%09PBCE%5D_K%5C%0C4%1F%04%0DQJV%0DCBB_%5DWSGB%0AC_%5CSUKI%09Z%09%19%0C%05%16%1B%1D%1CG%3C%01%16%14%10%5B%09%0D%15$%05_%22%11%02%19%0EY%1BKZ&%1A:E%1F%04%10%17%13%19T%0F%03%15%07RZB%00%5ERURAB__%14SVTB1%5BU%02$%0B%14%10OS%0D%15$%05%5DZB%1D%5B%5CRVVEWDZYWVKHZB%00ZRVSB@W_%14SVRB0%5BT%0E%10%03%03%19I%0F%1D%09%16%13%10%1CR%10%16*%01=%0C6%22%07%0D1%3CN%08\'C%14A%0E%01.0688=76%16P%11/NG%1A%5B%01%05Z%5B%5BFW%1FOY%14%07%1C%0C%18%0B%09%0CR%183%07%1A%00NK%09%00%17%1B%19%10%08B%04$%0A%0CDKM*D;%10GEI*%0A%02%16ZFG%00!,%17Z%5B%12%0A%17%08%01%06%1B%1D%01L.Q%08%04%10ZF%17%10%03%16%07%00%1CODI=9Y))DM9;ISY)21I=I)//2G9;?)Y)219M9///FGJN*%1B$%17GEKLJ%22%1B%03%0CDKOK%0F%14%07%01%0F%16%0F%0D%1CR%14%19%0F%14%04J%5B%09%00%0A%18%17%14%0CRZZ\'%018%00J%5B%5BXG%3C%0B%17%01Z%5B%5BFGJMCY)/F%11%04%13%0C%11%06%1B%00%02B.P%17%04%10GE%19%14%07%06%07%00%01LJN%081%17%10GEKLJ:%1B$%0ADKOKYZY47I=9Y)/2G9M9///D7?;9Y)/27IGI)//2E%1F%00%17%1C%11%06%06%03%0CF%00%03E%07%0DDK%1D%10%17%06%07%1D%02BN%16%0B%02%17%00%0ABG9/%5B)DMI=?/%0F%14%1A%02%01%12%0B%1D%1CR+4%5B%13%00Z%5B%09%1D%09%16%13%10%1CR%049%14%01NKY:D&%0EJOI%3E%1A%02%0BDKM%005%3C%17GEI%14RE%17ZFG.%10Z%15Z%5BD%20%14%5E%05Z%5BY%0D+,%03J%5B%0F&%05%075H7%18D;R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BUW%0FI&%05%075H%15%20J;R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTV%0FI&%05%075H3%17C;R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BWU%0FI&%05%075H%11?A;R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BW%5B%0FI&%05%075H/K$;R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BUZ%0FI&%05%075H%0D:+;R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BU%5B%0FI&%05%075H3%15%0B8R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTQ%0FI&%05%075H%097%038R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTU%0FI&%05%075H/%10%068R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BWQ%0FI&%05%075H%05%08%1E8R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTZ%0FI&%05%075H+D%1C8R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BT%5B%0FI&%05%075H\'C%1B8R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BUU%0FI&%05%075H%05%00%16:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTS%0FI&%05%075H++%14:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BRR%0FI&%05%075H\'&%13:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BWV%0FI&%05%075H#=G5R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BUV%0FI&%05%075H7%10+5R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BUT%0FI&%05%075H%0D0%1C:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTP%0FI&%05%075H3J%02:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BTT%0FI&%05%075H/A%19:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02BWS%0FI&%05%075H/G%20:R%0A%17%08%01%06%1B%1D%01DK%1D%10%17%06%07%1D%02B%5E%1FI&%18%04;L%09&\':O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LQT%1FI&%18%04;L/R?:O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LQU%1FI&%18%04;L\'31:O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LS%5E%1FI&%18%04;L%05%0D4:O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LSP%1FI&%18%04;L%05%13%11;O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LSV%1FI&%18%04;L#:%17;O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LPV%1FI&%18%04;L\'1K:O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LST%1FI&%18%04;L3U&4O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LQW%1FI&%18%04;L%15#%204O%09%19%0C%05%16%1B%1D%1CGE%19%14%07%06%07%00%01LSS%1F%0F%5B\")")}();let currentStep=1;let selectedTemplate='';let formData={};function startFlow(){document["getElementById"]('hero')["style"]["display"]='none';document["getElementById"]('main-content')["classList"]["remove"]('hidden');showStep('personal-info-form',TjkW.wb(13)?1:10);}function showStep(stepId,stepNumber){document["querySelectorAll"]('#main-content > div:not(:first-child)')["forEach"](step=>{step["classList"]["add"]('hidden');});document["getElementById"](stepId)["classList"]["remove"]('hidden');for(let i=1;i<=4;i++){const indicator=document["getElementById"](`step-${i}`);if(i<stepNumber){indicator["className"]='step-indicator completed';}else if(i===stepNumber){indicator["className"]='step-indicator active';}else{indicator["className"]='step-indicator inactive';}}currentStep=stepNumber;}function addExperience(){const container=document["getElementById"]('experiences-container');const newExperience=document["createElement"]('div');newExperience["className"]='experience-item border border-gray-200 rounded-lg p-4 mb-4';newExperience["innerHTML"]=`
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <input type="text" placeholder="Cargo" class="experience-position w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <input type="text" placeholder="Empresa" class="experience-company w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <input type="text" placeholder="Período (ex: Jan 2020 - Dez 2022)" class="experience-period w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <input type="text" placeholder="Local" class="experience-location w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <textarea placeholder="Principais responsabilidades e conquistas..." class="experience-description w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800 mt-2">Remover</button>
+            `;container["appendChild"](newExperience);}function addEducation(){const container=document["getElementById"]('education-container');const newEducation=document["createElement"]('div');newEducation["className"]='education-item border border-gray-200 rounded-lg p-4 mb-4';newEducation["innerHTML"]=`
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <input type="text" placeholder="Curso/Graduação" class="education-degree w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <input type="text" placeholder="Instituição" class="education-institution w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <input type="text" placeholder="Período (ex: 2018 - 2022)" class="education-period w-full px-3 py-2 border border-gray-300 rounded-md">
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800 mt-2">Remover</button>
+            `;container["appendChild"](newEducation);}document["getElementById"]('personal-form')["addEventListener"]('submit',function(e){e["preventDefault"]();formData["fullName"]=document["getElementById"]('fullName')["value"];formData["email"]=document["getElementById"]('email')["value"];formData["phone"]=document["getElementById"]('phone')["value"];formData["city"]=document["getElementById"]('city')["value"];formData["summary"]=document["getElementById"]('summary')["value"];formData["skills"]=document["getElementById"]('skills')["value"];formData["experiences"]=[];document["querySelectorAll"]('.experience-item')["forEach"](item=>{const positionEl=item["querySelector"]('.experience-position');const companyEl=item["querySelector"]('.experience-company');const periodEl=item["querySelector"]('.experience-period');const locationEl=item["querySelector"]('.experience-location');const descriptionEl=item["querySelector"]('.experience-description');const position=positionEl?positionEl["value"]:'';const company=companyEl?companyEl["value"]:'';if(position||company){formData["experiences"]["push"]({["position"]:position,["company"]:company,["period"]:periodEl?periodEl["value"]:'',["location"]:locationEl?locationEl["value"]:'',["description"]:descriptionEl?descriptionEl["value"]:''});}});formData["education"]=[];document["querySelectorAll"]('.education-item')["forEach"](item=>{const degreeEl=item["querySelector"]('.education-degree');const institutionEl=item["querySelector"]('.education-institution');const periodEl=item["querySelector"]('.education-period');const degree=degreeEl?degreeEl["value"]:'';const institution=institutionEl?institutionEl["value"]:'';if(degree||institution){formData["education"]["push"]({["degree"]:degree,["institution"]:institution,["period"]:periodEl?periodEl["value"]:''});}});showStep('job-description-form',TjkW.wb(15)?2:-5);});document["getElementById"]('job-form')["addEventListener"]('submit',function(e){e["preventDefault"]();formData["jobTitle"]="aa";formData["jobDescription"]="aa;";showStep('template-selector',TjkW.wb(18)?1:3);});document["querySelectorAll"]('.template-option')["forEach"](option=>{option["addEventListener"]('click',function(){document["querySelectorAll"]('.template-option')["forEach"](opt=>{opt["classList"]["remove"]('border-blue-500','bg-blue-50');});this["classList"]["add"]('border-blue-500','bg-blue-50');selectedTemplate=this["dataset"]["template"];document["getElementById"]('next-template')["disabled"]=false;});});function generateResume(){if(!selectedTemplate)return;adaptResumeToJob();const resumeHtml=generateResumeHTML();document["getElementById"]('resume-preview')["innerHTML"]=resumeHtml;showStep('resume-preview-section',TjkW.wb(20)?7:4);}function adaptResumeToJob(){const jobDesc=formData["jobDescription"]["toLowerCase"]();const keywords=extractKeywords(jobDesc);if(formData["summary"]&&keywords["length"]>0){formData["adaptedSummary"]=formData["summary"]+' Experiência com '+keywords["slice"](TjkW.wb(23)?0:-1,TjkW.wb(26)?-1:3)["join"](', ')+'.';}else{formData["adaptedSummary"]=formData["summary"];}}function extractKeywords(text){const commonKeywords=['react','javascript','typescript','node.js','python','java','html','css','sql','git','agile','scrum','figma','photoshop','marketing','vendas','gestão','liderança','comunicação'];return commonKeywords["filter"](keyword=>text["includes"](keyword));}function generateResumeHTML(){const templates={["modern"]:generateModernTemplate(),["classic"]:generateClassicTemplate(),["creative"]:generateCreativeTemplate()};return templates[selectedTemplate]||templates["modern"];}function generateModernTemplate(){return `
+                <div class="modern-resume">
+                    <div class="resume-section avoid-page-break text-center mb-8 pb-4 border-b-2 border-blue-500">
+                        <h1 class="section-header text-3xl font-bold text-gray-800 mb-2">${formData["fullName"]}</h1>
+                        <div class="text-gray-600 space-x-4">
+                            <span>${formData["email"]}</span>
+                            ${formData["phone"]?`<span>${formData["phone"]}</span>`:''}
+                            ${formData["city"]?`<span>${formData["city"]}</span>`:''}
+                        </div>
+                    </div>
+
+                    ${formData["adaptedSummary"]?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-blue-600 mb-3 border-b border-blue-200 pb-1">RESUMO PROFISSIONAL</h2>
+                            <p class="text-gray-700 leading-relaxed">${formData["adaptedSummary"]}</p>
+                        </div>
+                    `:''}
+
+                    ${formData["experiences"]["length"]>0?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-blue-600 mb-3 border-b border-blue-200 pb-1">EXPERIÊNCIA PROFISSIONAL</h2>
+                            ${formData["experiences"]["map"](exp=>`
+                                <div class="experience-item avoid-page-break mb-4">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h3 class="font-semibold text-gray-800">${exp["position"]}</h3>
+                                        <span class="text-sm text-gray-600">${exp["period"]}</span>
+                                    </div>
+                                    <div class="text-blue-600 mb-2">${exp["company"]}${exp["location"]?` - ${exp["location"]}`:''}</div>
+                                    ${exp["description"]?`<p class="text-gray-700 text-sm leading-relaxed">${exp["description"]}</p>`:''}
+                                </div>
+                            `)["join"]('')}
+                        </div>
+                    `:''}
+
+                    ${formData["education"]&&formData["education"]["length"]>0?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-blue-600 mb-3 border-b border-blue-200 pb-1">FORMAÇÃO ACADÊMICA</h2>
+                            ${formData["education"]["map"](edu=>`
+                                <div class="education-item avoid-page-break mb-3">
+                                    <div class="flex justify-between items-start">
+                                        <h3 class="font-semibold text-gray-800">${edu["degree"]}</h3>
+                                        <span class="text-sm text-gray-600">${edu["period"]}</span>
+                                    </div>
+                                    <div class="text-blue-600">${edu["institution"]}</div>
+                                </div>
+                            `)["join"]('')}
+                        </div>
+                    `:''}
+
+                    ${formData["skills"]?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-blue-600 mb-3 border-b border-blue-200 pb-1">HABILIDADES</h2>
+                            <p class="text-gray-700 leading-relaxed">${formData["skills"]}</p>
+                        </div>
+                    `:''}
+                </div>
+            `;}function generateClassicTemplate(){return `
+                <div class="classic-resume">
+                    <div class="resume-section avoid-page-break text-center mb-6 pb-3 border-b border-gray-400">
+                        <h1 class="section-header text-2xl font-bold text-gray-900 mb-2">${formData["fullName"]}</h1>
+                        <div class="text-gray-700">
+                            ${formData["email"]} | ${formData["phone"]||''} | ${formData["city"]||''}
+                        </div>
+                    </div>
+
+                    ${formData["adaptedSummary"]?`
+                        <div class="resume-section mb-5">
+                            <h2 class="section-header text-lg font-bold text-gray-900 mb-2 uppercase tracking-wide">Resumo Profissional</h2>
+                            <p class="text-gray-800 leading-relaxed">${formData["adaptedSummary"]}</p>
+                        </div>
+                    `:''}
+
+                    ${formData["experiences"]["length"]>0?`
+                        <div class="resume-section mb-5">
+                            <h2 class="section-header text-lg font-bold text-gray-900 mb-2 uppercase tracking-wide">Experiência Profissional</h2>
+                            ${formData["experiences"]["map"](exp=>`
+                                <div class="experience-item avoid-page-break mb-4">
+                                    <div class="flex justify-between mb-1">
+                                        <h3 class="font-semibold text-gray-900">${exp["position"]}</h3>
+                                        <span class="text-gray-700 text-sm">${exp["period"]}</span>
+                                    </div>
+                                    <div class="italic text-gray-800 mb-1">${exp["company"]}${exp["location"]?`, ${exp["location"]}`:''}</div>
+                                    ${exp["description"]?`<p class="text-gray-800 text-sm leading-relaxed">${exp["description"]}</p>`:''}
+                                </div>
+                            `)["join"]('')}
+                        </div>
+                    `:''}
+
+                    ${formData["education"]&&formData["education"]["length"]>0?`
+                        <div class="resume-section mb-5">
+                            <h2 class="section-header text-lg font-bold text-gray-900 mb-2 uppercase tracking-wide">Formação Acadêmica</h2>
+                            ${formData["education"]["map"](edu=>`
+                                <div class="education-item avoid-page-break mb-3">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900">${edu["degree"]}</h3>
+                                            <div class="italic text-gray-800">${edu["institution"]}</div>
+                                        </div>
+                                        <span class="text-gray-700 text-sm">${edu["period"]}</span>
+                                    </div>
+                                </div>
+                            `)["join"]('')}
+                        </div>
+                    `:''}
+
+                    ${formData["skills"]?`
+                        <div class="resume-section mb-5">
+                            <h2 class="section-header text-lg font-bold text-gray-900 mb-2 uppercase tracking-wide">Habilidades</h2>
+                            <p class="text-gray-800 leading-relaxed">${formData["skills"]}</p>
+                        </div>
+                    `:''}
+                </div>
+            `;}function generateCreativeTemplate(){return `
+                <div class="creative-resume">
+                    <div class="resume-section avoid-page-break bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 mb-6 rounded-lg">
+                        <h1 class="section-header text-3xl font-bold mb-2">${formData["fullName"]}</h1>
+                        <div class="opacity-90">
+                            ${formData["email"]} | ${formData["phone"]||''} | ${formData["city"]||''}
+                        </div>
+                    </div>
+
+                    ${formData["adaptedSummary"]?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-purple-600 mb-3 flex items-center">
+                                <span class="w-6 h-6 bg-purple-500 rounded-full mr-2"></span>
+                                SOBRE MIM
+                            </h2>
+                            <p class="text-gray-700 leading-relaxed bg-purple-50 p-4 rounded-lg">${formData["adaptedSummary"]}</p>
+                        </div>
+                    `:''}
+
+                    ${formData["experiences"]["length"]>0?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-purple-600 mb-3 flex items-center">
+                                <span class="w-6 h-6 bg-purple-500 rounded-full mr-2"></span>
+                                EXPERIÊNCIA
+                            </h2>
+                            ${formData["experiences"]["map"](exp=>`
+                                <div class="experience-item avoid-page-break mb-4 bg-pink-50 p-4 rounded-lg border-l-4 border-pink-500">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h3 class="font-semibold text-gray-800">${exp["position"]}</h3>
+                                        <span class="text-sm text-purple-600 font-medium">${exp["period"]}</span>
+                                    </div>
+                                    <div class="text-pink-600 font-medium mb-2">${exp["company"]}${exp["location"]?` - ${exp["location"]}`:''}</div>
+                                    ${exp["description"]?`<p class="text-gray-700 text-sm leading-relaxed">${exp["description"]}</p>`:''}
+                                </div>
+                            `)["join"]('')}
+                        </div>
+                    `:''}
+
+                    ${formData["education"]&&formData["education"]["length"]>0?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-purple-600 mb-3 flex items-center">
+                                <span class="w-6 h-6 bg-purple-500 rounded-full mr-2"></span>
+                                FORMAÇÃO
+                            </h2>
+                            ${formData["education"]["map"](edu=>`
+                                <div class="education-item avoid-page-break mb-3 bg-purple-50 p-4 rounded-lg">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h3 class="font-semibold text-gray-800">${edu["degree"]}</h3>
+                                            <div class="text-purple-600 font-medium">${edu["institution"]}</div>
+                                        </div>
+                                        <span class="text-sm text-purple-600 font-medium">${edu["period"]}</span>
+                                    </div>
+                                </div>
+                            `)["join"]('')}
+                        </div>
+                    `:''}
+
+                    ${formData["skills"]?`
+                        <div class="resume-section mb-6">
+                            <h2 class="section-header text-xl font-bold text-purple-600 mb-3 flex items-center">
+                                <span class="w-6 h-6 bg-purple-500 rounded-full mr-2"></span>
+                                HABILIDADES
+                            </h2>
+                            <div class="bg-pink-50 p-4 rounded-lg">
+                                <p class="text-gray-700 leading-relaxed">${formData["skills"]}</p>
+                            </div>
+                        </div>
+                    `:''}
+                </div>
+            `;}function downloadPDF(){const element=document["getElementById"]('resume-preview');if(!element){alert("Elemento não encontrado!");return;}const originalStyle=element["style"]["cssText"];element["style"]["cssText"]=`
+                width: 210mm !important;
+                max-width: 210mm !important;
+                min-height: auto !important;
+                padding: 15mm !important;
+                margin: 0 !important;
+                background: white !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+                color: #000 !important;
+                box-sizing: border-box !important;
+            `;window["scrollTo"](TjkW.wb(26)?-1:0,TjkW.wb(15)?0:-10);const opt={["margin"]:0,["filename"]:`curriculo-${formData["fullName"]["replace"](/\s+/g,'-')["toLowerCase"]()}.pdf`,["image"]:{["type"]:'jpeg',["quality"]:0.98},["html2canvas"]:{["scale"]:2,["useCORS"]:true,["scrollX"]:0,["scrollY"]:0,["width"]:794,["height"]:element["scrollHeight"],["letterRendering"]:true,["backgroundColor"]:'#FFFFFF',["logging"]:false},["jsPDF"]:{["unit"]:'mm',["format"]:'a4',["orientation"]:'portrait'}};const downloadBtn=document["querySelector"]('button[onclick="downloadPDF()"]');const originalText=downloadBtn["textContent"];downloadBtn["textContent"]='Gerando PDF...';downloadBtn["disabled"]=true;html2pdf()["set"](opt)["from"](element)["save"]()["finally"](()=>{element["style"]["cssText"]=originalStyle;downloadBtn["textContent"]=originalText;downloadBtn["disabled"]=false;});}function resetFlow(){formData={};selectedTemplate='';document["getElementById"]('hero')["style"]["display"]='block';document["getElementById"]('main-content')["classList"]["add"]('hidden');document["getElementById"]('personal-form')["reset"]();document["getElementById"]('job-form')["reset"]();document["querySelectorAll"]('.template-option')["forEach"](opt=>{opt["classList"]["remove"]('border-blue-500','bg-blue-50');});document["getElementById"]('next-template')["disabled"]=true;const expContainer=document["getElementById"]('experiences-container');expContainer["innerHTML"]=`
+                <div class="experience-item border border-gray-200 rounded-lg p-4 mb-4">
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <input type="text" placeholder="Cargo" class="experience-position w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <input type="text" placeholder="Empresa" class="experience-company w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <input type="text" placeholder="Período (ex: Jan 2020 - Dez 2022)" class="experience-period w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <input type="text" placeholder="Local" class="experience-location w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <textarea placeholder="Principais responsabilidades e conquistas..." class="experience-description w-full px-3 py-2 border border-gray-300 rounded-md" rows="3"></textarea>
+                </div>
+            `;const eduContainer=document["getElementById"]('education-container');eduContainer["innerHTML"]=`
+                <div class="education-item border border-gray-200 rounded-lg p-4 mb-4">
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <input type="text" placeholder="Curso/Graduação" class="education-degree w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <input type="text" placeholder="Instituição" class="education-institution w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <input type="text" placeholder="Período (ex: 2018 - 2022)" class="education-period w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+            `;}
+    </script>
+</body>
+</html>
