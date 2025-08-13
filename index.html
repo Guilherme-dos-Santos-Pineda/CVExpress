@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -104,6 +105,11 @@
             background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--secondary)));
         }
 
+        .blur-3xl {
+            --tw-blur: blur(64px);
+            filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+        }
+
         @keyframes shine {
             0% {
                 background-position: 200% center;
@@ -164,8 +170,16 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+
     <!-- Hero Section -->
     <section id="hero" class="gradient-primary text-white py-20">
+
+    <!-- <div class="blur-3xl">
+        <div class="absolute left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#1fe290] to-[#133330] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem] blur-3xl"
+             style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%);">
+        </div>
+    </div> -->
+
         <div class="text-center">
             <div class="max-w-6xl mx-auto px-6 text-center">
                 <h1 class="text-5xl md:text-6xl font-bold mb-6">
@@ -188,6 +202,7 @@
 
     <!-- Main Content -->
     <div id="main-content" class="hidden">
+
         <!-- Progress Steps -->
         <div class="bg-white border-b border-gray-200 py-4">
             <div class="max-w-4xl mx-auto px-6">
@@ -309,6 +324,15 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Descrição da Vaga *</label>
                         <textarea id="jobDescription" required rows="12" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Cole aqui a descrição completa da vaga, incluindo requisitos, responsabilidades e benefícios..."></textarea>
+                    </div>
+
+                    <!-- Opção para usar ou não a IA -->
+                    <div class="flex items-center">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="useAI" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-700">Usar IA para adaptar meu currículo</span>
+                        </label>
                     </div>
 
                     <!-- <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -1043,14 +1067,97 @@
         document.getElementById('job-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            formData.jobTitle = "aa";
-            formData.jobDescription = "aa;"
-            // formData.jobTitle = document.getElementById('jobTitle').value ?? "aa";
-            // formData.jobDescription = document.getElementById('jobDescription').value ?? "aa";
-
+            // Coleta os dados do formulário
+            formData.jobTitle = document.getElementById('jobTitle').value;
+            formData.jobDescription = document.getElementById('jobDescription').value;
+            const useAI = document.getElementById('useAI').checked;
+            
+            // Mostra o passo seguinte (template-selector)
             showStep('template-selector', 3);
             document.getElementById('main-content').scrollIntoView({ behavior: 'smooth' });
+            
+            // Se o usuário optou por usar a IA, chamamos a API
+            if (useAI) {
+                // Mostra um loader enquanto processa
+                showAILoader();
+                
+                // Prepara os dados para a IA (combina dados pessoais + descrição da vaga)
+                const prompt = `Candidato: ${JSON.stringify(formData.summary)}\n\n` +
+                            `Vaga: ${formData.jobTitle}\n\n` +
+                            `Descrição da Vaga: ${formData.jobDescription}\n\n` +
+                            "Por favor, forneça recomendações para adaptar este currículo à vaga, " +
+                            "destacando as habilidades mais relevantes e sugerindo melhorias no resumo profissional.";
+                
+                // Chama a API de IA
+                requestAI(prompt).then(aiResponse => {
+                    // Esconde o loader
+                    hideAILoader();
+                    
+                    // Mostra as recomendações da IA
+                    displayAIRecommendations(aiResponse);
+                    
+                    // Armazena a resposta da IA para uso posterior
+                    formData.aiRecommendations = aiResponse;
+                }).catch(error => {
+                    hideAILoader();
+                    console.error("Erro ao processar com IA:", error);
+                    // Fallback: continua sem as recomendações da IA
+                });
+            }
         });
+
+        // Função para mostrar carregamento da IA
+        function showAILoader() {
+            const aiLoader = document.createElement('div');
+            aiLoader.id = 'ai-loader';
+            aiLoader.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg max-w-md w-full">
+                        <div class="flex items-center space-x-3">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                            <p class="text-gray-800">Nossa IA está analisando a vaga e seu currículo...</p>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Isso pode levar alguns segundos.</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(aiLoader);
+        }
+
+        // Função para esconder carregamento da IA
+        function hideAILoader() {
+            const loader = document.getElementById('ai-loader');
+            if (loader) loader.remove();
+        }
+
+        // Função para exibir recomendações da IA
+        function displayAIRecommendations(recommendations) {
+            const recommendationsContainer = document.createElement('div');
+            recommendationsContainer.id = 'ai-recommendations';
+            recommendationsContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            recommendationsContainer.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-blue-800">Recomendações da IA</h3>
+                        <button onclick="document.getElementById('ai-recommendations').remove()" class="text-gray-500 hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="prose prose-sm max-w-none">
+                        ${recommendations.replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="document.getElementById('ai-recommendations').remove()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Entendido
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(recommendationsContainer);
+        }
+
 
         document.querySelectorAll('.template-option').forEach(option => {
             option.addEventListener('click', function() {
@@ -1417,6 +1524,56 @@
             
             header.style.cursor = 'pointer';
         });
+
+        // Versão melhorada da sua função requestAPI (agora retorna Promise)
+        function requestAI(prompt) {
+            return new Promise((resolve, reject) => {
+                const url = "https://api.groq.com/openai/v1/chat/completions";
+                const apiKey = "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";
+
+                const body = {
+                    model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+                    messages: [
+                        { 
+                            role: "system", 
+                            content: "Você é um especialista em Recursos Humanos. " +
+                                    "Analise o currículo do candidato e a descrição da vaga. " +
+                                    "Forneça recomendações específicas para adaptar o currículo à vaga, " +
+                                    "incluindo: 1) Quais habilidades destacar; 2) Sugestões para o resumo profissional; " +
+                                    "3) Palavras-chave para incluir; 4) Quais experiências enfatizar. " +
+                                    "Seja conciso e direto ao ponto."
+                        },
+                        { role: "user", content: prompt }
+                    ],
+                    max_tokens: 400,
+                    temperature: 0.7
+                };
+
+                fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(async (response) => {
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error?.message || `Erro na requisição: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    resolve(data.choices[0].message.content);
+                })
+                .catch(error => {
+                    console.error("Erro ao chamar API:", error);
+                    reject(error);
+                });
+            });
+        }
+
     </script>
 </body>
 </html>
